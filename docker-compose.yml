@@ -17,58 +17,6 @@ services:
       - ./nginx/appdata/npm/config:/config
       - ./nginx/appdata/npm/letsencrypt:/etc/letsencrypt
 
-  authentik-server:
-    image: ghcr.io/goauthentik/server:latest
-    container_name: authentik-server
-    restart: unless-stopped
-    command: server
-    environment:
-      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
-      AUTHENTIK_POSTGRESQL__HOST: authentik-db
-      AUTHENTIK_POSTGRESQL__NAME: authentik
-      AUTHENTIK_POSTGRESQL__USER: authentik
-      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_POSTGRESQL_PASSWORD}
-      AUTHENTIK_REDIS__HOST: authentik-redis     # <--- ADD THIS LINE
-      AUTHENTIK_EMAIL__FROM: "authentik@example.com"
-      AUTHENTIK_EMAIL__HOST: mail.example.com
-    ports:
-      - "9000:9000"  # Authentik UI
-    depends_on:
-      - authentik-db
-      - authentik-redis
-    volumes:
-      - ./authentik/media:/media
-      - ./authentik/custom-templates:/templates
-
-  authentik-db:
-    image: docker.io/library/postgres:16-alpine
-    container_name: authentik-db
-    environment:
-      POSTGRES_DB: authentik
-      POSTGRES_USER: authentik
-      POSTGRES_PASSWORD: ${AUTHENTIK_POSTGRESQL_PASSWORD}
-    volumes:
-      - ./authentik/postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
-      start_period: 20s
-      interval: 30s
-      retries: 5
-      timeout: 5s
-
-  authentik-redis:
-    image: redis:alpine
-    container_name: authentik-redis
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
-      start_period: 20s
-      interval: 30s
-      retries: 5
-      timeout: 3s
-    volumes:
-      - ./authentik/redis:/data
-
   portainer:
     container_name: portainer
     image: portainer/portainer-ce:latest
@@ -232,11 +180,14 @@ services:
       - HOMEPAGE_VAR_WEATHER_LONG=${HOMEPAGE_VAR_WEATHER_LONG}
       - HOMEPAGE_VAR_WEATHER_TIME=${TIMEZONE}
       - HOMEPAGE_VAR_WEATHER_UNIT=${HOMEPAGE_VAR_WEATHER_UNIT}
+      - HOMEPAGE_ALLOWED_HOSTS=192.168.1.166:3000, nas.hsdmiranda.com
     volumes:
       - ./homepage:/app/config
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${DATA_ROOT}:/data
     restart: always
+    ports:
+      - 3000:3000
     command: [sh, -c, "cp -n /app/config/tpl/*.yaml /app/config && node server.js"]
 
   watchtower:
@@ -318,6 +269,20 @@ services:
     env_file: ./statistics-for-strava/.env
     ports:
       - 9090:8080
+      
+  statistics-for-strava-ollama:
+        image: ollama/ollama:latest
+        container_name: 'statistics-for-strava-ollama'
+        tty: true
+        restart: unless-stopped
+        volumes:
+            - .:/code
+            - ./ollama:/root/.ollama
+        environment:
+            - OLLAMA_KEEP_ALIVE=24h
+            - OLLAMA_HOST=0.0.0.0
+        ports:
+            - '11434:11434'
 
 networks:
   default:
