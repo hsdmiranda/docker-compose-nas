@@ -25,6 +25,17 @@ services:
     volumes:
       - ./portainer:/data
       - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - homepage.group=Admin
+      - homepage.name=portainer
+      - homepage.icon=portainer.png
+      - homepage.href=https://portainer.hsdmiranda.com/
+      - homepage.description=Container management
+      - homepage.weight=0
+      - homepage.widget.type=portainer
+      - homepage.widget.env=3
+      - homepage.widget.url=https://portainer:9443/
+      - homepage.widget.key=${PORTAINER_API_KEY}
 
   sonarr:
     image: lscr.io/linuxserver/sonarr
@@ -35,7 +46,7 @@ services:
       - TZ=${TIMEZONE}
     volumes:
       - ./sonarr:/config
-      - ${DATA_ROOT}:/data
+      - ${EXTDATA_ROOT}:/data
     restart: always
     healthcheck:
       test: [ "CMD", "curl", "--fail", "http://127.0.0.1:8989/sonarr/ping" ]
@@ -141,7 +152,7 @@ services:
       - homepage.group=Download
       - homepage.name=qBittorrent
       - homepage.icon=qbittorrent.png
-      - homepage.href=/qbittorrent
+      - homepage.href=https://qbt.hsdmiranda.com
       - homepage.description=Bittorrent client
       - homepage.weight=5
       - homepage.widget.type=qbittorrent
@@ -180,7 +191,7 @@ services:
       - HOMEPAGE_VAR_WEATHER_LONG=${HOMEPAGE_VAR_WEATHER_LONG}
       - HOMEPAGE_VAR_WEATHER_TIME=${TIMEZONE}
       - HOMEPAGE_VAR_WEATHER_UNIT=${HOMEPAGE_VAR_WEATHER_UNIT}
-      - HOMEPAGE_ALLOWED_HOSTS=192.168.1.166:3000, nas.hsdmiranda.com
+      - HOMEPAGE_ALLOWED_HOSTS=192.168.1.166:3000,nas.hsdmiranda.com
     volumes:
       - ./homepage:/app/config
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -191,13 +202,28 @@ services:
     command: [sh, -c, "cp -n /app/config/tpl/*.yaml /app/config && node server.js"]
 
   watchtower:
-    image: containrrr/watchtower
+    image: containrrr/watchtower:latest
     container_name: watchtower
     restart: always
+    command: --http-api-periodic-polls
     environment:
       - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_HTTP_API_TOKEN=${WATCHTOWER_API_TOKEN}  # Set your token here
+      - WATCHTOWER_HTTP_API_UPDATE=true
+      - WATCHTOWER_HTTP_API_METRICS=true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+    - 8081:8080
+    labels:
+      - homepage.group=Admin
+      - homepage.name=Watchtower
+      - homepage.icon=watchtower.png
+      - homepage.description=Watchtower client
+      - homepage.weight=5
+      - homepage.widget.type=watchtower
+      - homepage.widget.url=http://watchtower:8080
+      - homepage.widget.key=${WATCHTOWER_API_TOKEN}
 
   plex:
     image: plexinc/pms-docker:latest # Set specific: plexinc/pms-docker:1.40.2.8395-c67dce28e
@@ -269,7 +295,7 @@ services:
     env_file: ./statistics-for-strava/.env
     ports:
       - 9090:8080
-      
+
   statistics-for-strava-ollama:
         image: ollama/ollama:latest
         container_name: 'statistics-for-strava-ollama'
